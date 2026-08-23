@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Organizer View — Guess the Passcode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<style>
+  .admin-stage { max-width: 900px; }
+  .admin-toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 24px; }
+  .admin-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 13px; }
+  .admin-table th, .admin-table td { padding: 10px 12px; border-bottom: 1px solid var(--panel-line); text-align: left; }
+  .admin-table th { color: var(--text-muted); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .pill { padding: 3px 8px; border-radius: 999px; font-size: 11px; letter-spacing: 0.04em; }
+  .pill.won { background: rgba(232,184,75,0.18); color: var(--brass); }
+  .pill.lost { background: rgba(255,107,94,0.15); color: var(--coral); }
+  .btn-primary.small { padding: 10px 16px; font-size: 13px; width: auto; }
+  .stat-strip { display: flex; gap: 14px; margin-bottom: 28px; }
+  .stat-box { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 8px; padding: 16px; flex: 1; text-align: center; }
+  .stat-box .v { display:block; font-family: var(--font-mono); font-size: 24px; color: var(--brass); font-weight: 600; }
+  .stat-box .l { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">⊘</span>
+    <span class="brand-text">ALGORITHM CLUB — ORGANIZER</span>
+  </div>
+  <a class="admin-link" href="index.html">← back to game</a>
+</header>
+
+<main class="stage admin-stage">
+  <p class="eyebrow">live results</p>
+  <h1 class="title" style="font-size:32px;">Organizer View</h1>
+
+  <div class="stat-strip" id="stat-strip"></div>
+
+  <div class="admin-toolbar">
+    <button class="btn-primary small" id="refresh-btn">Refresh</button>
+    <a class="btn-primary small" style="text-decoration:none;" href="/api/export.csv" download>Download CSV</a>
+  </div>
+
+  <table class="admin-table">
+    <thead>
+      <tr><th>ID</th><th>Result</th><th>Tries</th><th>Time</th><th>Guesses</th><th>When</th></tr>
+    </thead>
+    <tbody id="admin-body"></tbody>
+  </table>
+  <p class="empty-note" id="admin-empty" style="display:none;">No attempts yet.</p>
+</main>
+
+<script>
+async function loadResults() {
+  const body = document.getElementById('admin-body');
+  const empty = document.getElementById('admin-empty');
+  const stats = document.getElementById('stat-strip');
+  body.innerHTML = '';
+
+  const res = await fetch('/api/results');
+  const rows = await res.json();
+
+  const total = rows.length;
+  const won = rows.filter(r => r.won).length;
+  const avgTries = total ? (rows.reduce((a, r) => a + r.tries, 0) / total).toFixed(1) : '—';
+
+  stats.innerHTML = `
+    <div class="stat-box"><span class="v">${total}</span><span class="l">total plays</span></div>
+    <div class="stat-box"><span class="v">${won}</span><span class="l">vaults cracked</span></div>
+    <div class="stat-box"><span class="v">${avgTries}</span><span class="l">avg tries</span></div>
+  `;
+
+  if (!rows.length) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    const when = new Date(r.timestamp).toLocaleTimeString();
+    const seconds = (r.durationMs / 1000).toFixed(1);
+    tr.innerHTML = `
+      <td>${escapeHtml(r.id)}</td>
+      <td><span class="pill ${r.won ? 'won' : 'lost'}">${r.won ? 'CRACKED' : 'FAILED'}</span></td>
+      <td>${r.tries}</td>
+      <td>${seconds}s</td>
+      <td>${r.guesses.join(', ')}</td>
+      <td>${when}</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+document.getElementById('refresh-btn').addEventListener('click', loadResults);
+loadResults();
+</script>
+</body>
+</html>

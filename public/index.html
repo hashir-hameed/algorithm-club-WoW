@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Guess the Passcode — Algorithm Club</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="grain"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">⊘</span>
+    <span class="brand-text">ALGORITHM CLUB</span>
+  </div>
+  <a class="admin-link" href="admin.html">organizer view →</a>
+</header>
+
+<main class="stage">
+
+  <!-- SCREEN 1: ID ENTRY -->
+  <section id="screen-entry" class="screen active">
+    <p class="eyebrow">binary search, live</p>
+    <h1 class="title">Guess the<br />Passcode</h1>
+    <p class="subtitle">
+      The vault holds a 3-digit code between <strong>100</strong> and <strong>999</strong>.
+      You get <strong>10 tries</strong>. After each guess, the vault tells you
+      <em>higher</em> or <em>lower</em> — cut the range in half, every time.
+    </p>
+
+    <form id="entry-form" class="entry-form">
+      <label for="student-id">Student ID</label>
+      <input
+        type="text"
+        id="student-id"
+        name="student-id"
+        placeholder="e.g. b00109061"
+        pattern="^[bBgG][0-9]{8}$"
+        maxlength="9"
+        autocomplete="off"
+        required
+      />
+      <p class="id-hint">Starts with b or g, followed by 8 digits — 9 characters total.</p>
+      <button type="submit" class="btn-primary">Enter the vault</button>
+      <p class="form-note" id="entry-error"></p>
+    </form>
+
+    <button class="btn-ghost" id="show-leaderboard-btn">View leaderboard</button>
+  </section>
+
+  <!-- SCREEN 2: GAME -->
+  <section id="screen-game" class="screen">
+    <div class="game-head">
+      <div class="hud">
+        <span class="hud-label">player</span>
+        <span class="hud-value" id="hud-id">—</span>
+      </div>
+      <div class="hud hud-right">
+        <span class="hud-label">tries left</span>
+        <span class="hud-value" id="hud-tries">10</span>
+      </div>
+    </div>
+
+    <!-- animated lock: gear turns on every guess, shackle pops open on a correct guess -->
+    <div class="lock-visual">
+      <svg id="lock-svg" viewBox="0 0 160 180" width="140" height="158">
+        <g id="lock-shackle">
+          <path d="M60 78 V50 A20 20 0 0 1 100 50 V78" fill="none" stroke="var(--brass)" stroke-width="10" stroke-linecap="round" />
+        </g>
+        <rect x="38" y="72" width="84" height="72" rx="12" fill="var(--panel)" stroke="var(--panel-line)" stroke-width="2" />
+        <g id="lock-gear">
+          <circle cx="80" cy="108" r="20" fill="none" stroke="var(--brass-dim)" stroke-width="4" />
+          <g id="lock-gear-teeth" fill="var(--brass-dim)">
+            <rect x="77" y="82" width="6" height="10" />
+            <rect x="77" y="124" width="6" height="10" />
+            <rect x="52" y="105" width="10" height="6" />
+            <rect x="98" y="105" width="10" height="6" />
+            <rect x="60.5" y="88.5" width="6" height="10" transform="rotate(45 63.5 93.5)" />
+            <rect x="93.5" y="88.5" width="6" height="10" transform="rotate(-45 96.5 93.5)" />
+            <rect x="60.5" y="117.5" width="6" height="10" transform="rotate(-45 63.5 122.5)" />
+            <rect x="93.5" y="117.5" width="6" height="10" transform="rotate(45 96.5 122.5)" />
+          </g>
+          <circle cx="80" cy="108" r="6" fill="var(--brass)" />
+        </g>
+      </svg>
+    </div>
+
+    <!-- signature element: the shrinking search bracket -->
+    <div class="dial">
+      <div class="dial-endpoint dial-min">100</div>
+      <div class="dial-track">
+        <div class="dial-fill" id="dial-fill"></div>
+        <div class="dial-marker" id="dial-marker-low">100</div>
+        <div class="dial-marker" id="dial-marker-high">999</div>
+      </div>
+      <div class="dial-endpoint dial-max">999</div>
+    </div>
+    <p class="dial-caption">
+      current range: <span id="range-text">100 – 999</span>
+      <span class="dial-caption-dim">— that's <span id="range-size">900</span> possibilities left</span>
+    </p>
+
+    <form id="guess-form" class="guess-form">
+      <input type="number" id="guess-input" min="100" max="999" placeholder="enter a 3-digit guess" autocomplete="off" required />
+      <button type="submit" class="btn-primary">Try</button>
+    </form>
+    <p class="form-note" id="guess-error"></p>
+
+    <div class="feedback" id="feedback-banner"></div>
+
+    <ol class="history" id="history-list" reversed></ol>
+  </section>
+
+  <!-- SCREEN 3: RESULT -->
+  <section id="screen-result" class="screen">
+    <p class="eyebrow" id="result-eyebrow">vault status</p>
+    <h1 class="title" id="result-title">Cracked it.</h1>
+    <p class="subtitle" id="result-subtitle"></p>
+
+    <div class="result-stat-row">
+      <div class="result-stat">
+        <span class="result-stat-value" id="result-tries">—</span>
+        <span class="result-stat-label">tries used</span>
+      </div>
+      <div class="result-stat">
+        <span class="result-stat-value" id="result-time">—</span>
+        <span class="result-stat-label">time taken</span>
+      </div>
+      <div class="result-stat">
+        <span class="result-stat-value" id="result-code">—</span>
+        <span class="result-stat-label">the code</span>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="view-leaderboard-btn">See leaderboard</button>
+    <button class="btn-ghost" id="play-again-btn">Back to start</button>
+  </section>
+
+  <!-- SCREEN 4: LEADERBOARD -->
+  <section id="screen-leaderboard" class="screen">
+    <p class="eyebrow">fastest to crack the vault</p>
+    <h1 class="title">Leaderboard</h1>
+
+    <table class="leaderboard-table">
+      <thead>
+        <tr><th>#</th><th>Student ID</th><th>Tries</th><th>Time</th></tr>
+      </thead>
+      <tbody id="leaderboard-body"></tbody>
+    </table>
+    <p class="empty-note" id="leaderboard-empty" style="display:none;">No one has cracked the vault yet — be the first.</p>
+
+    <button class="btn-ghost" id="back-from-leaderboard-btn">← Back to start</button>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
